@@ -1,0 +1,72 @@
+<?php
+require_once('db.php'); // Include the database connection file
+require 'vendor/autoload.php'; // Include the Firebase JWT library
+
+use Firebase\JWT\JWT; // Import the JWT class
+
+// Allow requests from any origin
+header("Access-Control-Allow-Origin: http://127.0.0.1:5500");
+
+// Allow specific HTTP methods (e.g., POST)
+header("Access-Control-Allow-Methods: POST");
+
+// Allow specific HTTP headers (e.g., Content-Type)
+header("Access-Control-Allow-Headers: Content-Type");
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    header("HTTP/1.1 200 OK");
+    exit();
+}
+
+// Check if the request method is POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $data = json_decode(file_get_contents("php://input"), true);
+
+    // Check if the JSON data contains the expected keys
+    if (isset($data['username']) && isset($data['password'])) {
+        // Get the username and password from the JSON data
+        $username = $data['username'];
+        $password = $data['password'];
+
+        // Perform the user credential check
+        $query = "SELECT * FROM login WHERE username = '$username' AND password = '$password'";
+        $result = $conn->query($query);
+
+        if ($result->num_rows > 0) {
+            // User credentials are valid
+
+            // Generate a JWT token
+            $key = "siraoulo"; // Replace with your secret key
+            $payload = array(
+                "username" => $username
+            );
+            $token = JWT::encode($payload, $key, 'HS256'); // You can choose a suitable algorithm
+
+
+            // Return the JWT token in the response header
+            header('HTTP/1.1 200 OK');
+            header('Content-Type: application/json');
+            header("Authorization: Bearer $token");
+
+            // Include the token in the response body
+            $response = array('success' => true, 'message' => 'Login successful', 'token' => $token);
+            setcookie('jwt_token', $token, time() + 3600, '/', '127.0.0.1', false, true);
+
+
+        
+        } else {
+            // User credentials are invalid
+            $response = array('success' => false, 'message' => 'Login failed');
+        }
+    } else {
+        // JSON data does not contain the expected keys
+        $response = array('success' => false, 'message' => 'Invalid JSON data');
+    }
+} else {
+    // Invalid request method
+    header('HTTP/1.1 405 Method Not Allowed');
+    echo "Method not allowed";
+}
+
+// Return the JSON response
+echo json_encode($response);
+?>
