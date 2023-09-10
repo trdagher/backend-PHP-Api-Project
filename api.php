@@ -5,7 +5,7 @@ require_once('db.php'); // Include the database connection file
 
 
 // Allow requests from your frontend origin
-header("Access-Control-Allow-Origin: http://127.0.0.1:5500");
+header("Access-Control-Allow-Origin: *");
 
 // Allow specific HTTP methods (e.g., POST)
 header("Access-Control-Allow-Methods: GET, POST, DELETE, PUT");
@@ -73,19 +73,19 @@ function validateKeyForAdmin($conn)
             } else {
                 // Key is invalid, return a 401 Unauthorized response
                 header('HTTP/1.1 401 Unauthorized');
-                echo json_encode(array('error' => 'Invalid admin key'));
+                echo json_encode(array('status' => 401, 'error' => 'Invalid admin key'));
                 exit();
             }
         } else {
             // Admin key not found in the database, return a 401 Unauthorized response
             header('HTTP/1.1 401 Unauthorized');
-            echo json_encode(array('error' => 'Admin key not found'));
+            echo json_encode(array('status' => 401, 'error' => 'Admin key not found'));
             exit();
         }
     } else {
         // 'key' parameter is missing in the URL, return a 401 Unauthorized response
         header('HTTP/1.1 401 Unauthorized');
-        echo json_encode(array('error' => 'Key parameter is missing'));
+        echo json_encode(array('status' => 401, 'error' => 'Key parameter is missing'));
         exit();
     }
 }
@@ -130,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 // Check if the result is empty
                 if (empty($data)) {
                     header('HTTP/1.1 201 Created');
-                    echo json_encode(array('status' => 'empty', 'message' => 'No matching records found'));
+                    echo json_encode(array('status' => '201', 'message' => 'No matching records found'));
                 } else {
                     // Return the data as a JSON response
                     header('Content-Type: application/json');
@@ -139,12 +139,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             } else {
                 // Handle database query errors
                 header('HTTP/1.1 500 Internal Server Error');
-                echo json_encode(array('error' => 'Database error'));
+                echo json_encode(array('status' => 500, 'error' => 'Database error'));
             }
         } catch (Exception $e) {
             // Handle database connection errors
             header('HTTP/1.1 500 Internal Server Error');
-            echo json_encode(array('error' => 'Database connection error'));
+            echo json_encode(array('status' => 500, 'error' => 'Database connection error'));
         }
     } elseif (isset($_GET['key']) && isset($_GET['search']) && isset($_GET['limit'])) {
         $key = $_GET['key'];
@@ -178,7 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 // Check if the result is empty
                 if (empty($data)) {
                     header('HTTP/1.1 201 Created');
-                    echo json_encode(array('status' => 'empty', 'message' => 'No matching records found'));
+                    echo json_encode(array('status' => '201', 'message' => 'No matching records found'));
                 } else {
                     // Return the data as a JSON response
                     header('Content-Type: application/json');
@@ -187,17 +187,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             } else {
                 // Handle database query errors
                 header('HTTP/1.1 500 Internal Server Error');
-                echo json_encode(array('error' => 'Database error'));
+                echo json_encode(array('status' => 500, 'error' => 'Database error'));
             }
         } catch (Exception $e) {
             // Handle database connection errors
             header('HTTP/1.1 500 Internal Server Error');
-            echo json_encode(array('error' => 'Database connection error'));
+            echo json_encode(array('status' => 500, 'error' => 'Database connection error'));
         }
     } else {
         // Handle the case where the 'key', 'data', 'search', or 'limit' parameter is missing
         header('HTTP/1.1 400 Bad Request');
-        echo json_encode(array('error' => 'Key, data, search, or limit is missing'));
+        echo json_encode(array('status' => 400, 'error' => 'Key, data, search, or limit is missing'));
+
     }
 }
 
@@ -231,7 +232,8 @@ else if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
                     if ($stmt->execute()) {
                         // Return a success response
                         header('HTTP/1.1 200 OK');
-                        echo json_encode(array('message' => 'Record deleted successfully'));
+                        echo json_encode(array('status' => 200, 'message' => 'Record deleted successfully'));
+
                     } else {
                         // Handle database query errors
                         header('HTTP/1.1 500 Internal Server Error');
@@ -240,22 +242,26 @@ else if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
                 } else {
                     // The record with the given ID does not exist
                     header('HTTP/1.1 404 Not Found');
-                    echo json_encode(array('error' => 'Record not found'));
+                    echo json_encode(array('status' => 404, 'error' => 'Record not found'));
+
                 }
             } else {
                 // Handle missing 'id' field in JSON data
                 header('HTTP/1.1 400 Bad Request');
-                echo json_encode(array('error' => 'Invalid request data'));
+                echo json_encode(array('status' => 400, 'error' => 'Invalid request data'));
+
             }
         } catch (Exception $e) {
             // Handle exceptions
             header('HTTP/1.1 500 Internal Server Error');
-            echo json_encode(array('error' => 'Server error'));
+            echo json_encode(array('status' => 500, 'error' => 'Server error'));
+
         }
     } else {
         // Handle the case where the 'key' parameter is missing
         header('HTTP/1.1 400 Bad Request');
-        echo json_encode(array('error' => 'Key is missing'));
+        echo json_encode(array('status' => 400, 'error' => 'Key is missing'));
+
     }
 }
 
@@ -305,31 +311,37 @@ else if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
                     if ($stmt->execute()) {
                         // Return a success response
                         header('HTTP/1.1 200 OK');
-                        echo json_encode(array('message' => 'Record updated successfully'));
+                        echo json_encode(array('status' => 200, 'message' => 'Record updated successfully'));
+
                     } else {
                         // Handle database query errors
                         header('HTTP/1.1 500 Internal Server Error');
-                        echo json_encode(array('error' => 'Database error: ' . $stmt->error));
+                        echo json_encode(array('status' => 500, 'error' => 'Database error: ' . $stmt->error));
+
                     }
                 } else {
                     // Handle missing or invalid fields in JSON data
                     header('HTTP/1.1 400 Bad Request');
-                    echo json_encode(array('error' => 'No valid fields to update'));
+                    echo json_encode(array('status' => 400, 'error' => 'No valid fields to update'));
+
                 }
             } else {
                 // Handle missing 'id' field in JSON data
                 header('HTTP/1.1 400 Bad Request');
-                echo json_encode(array('error' => 'Invalid request data: Missing "id" field'));
+                echo json_encode(array('status' => 400, 'error' => 'Invalid request data: Missing "id" field'));
+
             }
         } catch (Exception $e) {
             // Handle exceptions
             header('HTTP/1.1 500 Internal Server Error');
-            echo json_encode(array('error' => 'Server error: ' . $e->getMessage()));
+            echo json_encode(array('status' => 500, 'error' => 'Server error: ' . $e->getMessage()));
+
         }
     } else {
         // Handle the case where the 'key' parameter is missing
         header('HTTP/1.1 400 Bad Request');
-        echo json_encode(array('error' => 'Key is missing'));
+        echo json_encode(array('status' => 400, 'error' => 'Key is missing'));
+
     }
 }
 
@@ -356,7 +368,8 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             foreach ($requiredFields as $field) {
                 if (!isset($data[$field])) {
                     header('HTTP/1.1 400 Bad Request');
-                    echo json_encode(array('error' => "$field is required"));
+                    echo json_encode(array('status' => 400, 'error' => "$field is required"));
+
                     exit();
                 }
             }
@@ -372,7 +385,8 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($count > 0) {
                 header('HTTP/1.1 400 Bad Request');
-                echo json_encode(array('error' => 'Duplicate record found'));
+                echo json_encode(array('status' => 409, 'error' => 'Duplicate record found'));
+
                 exit();
             }
 
@@ -424,21 +438,25 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($stmt->execute()) {
                 // Return a success response
                 header('HTTP/1.1 200 OK');
-                echo json_encode(array('message' => 'Record inserted successfully'));
+                echo json_encode(array('status' => 200, 'message' => 'Record inserted successfully'));
+
             } else {
                 // Handle database query errors
                 header('HTTP/1.1 500 Internal Server Error');
-                echo json_encode(array('error' => 'Database error'));
+                echo json_encode(array('status' => 500, 'error' => 'Database error'));
+
             }
         } catch (Exception $e) {
             // Handle exceptions
             header('HTTP/1.1 500 Internal Server Error');
-            echo json_encode(array('error' => 'Server error: ' . $e->getMessage()));
+            echo json_encode(array('status' => 500, 'error' => 'Server error: ' . $e->getMessage()));
+
         }
     } else {
         // Handle the case where the 'key' parameter is missing
         header('HTTP/1.1 400 Bad Request');
-        echo json_encode(array('error' => 'Key is missing'));
+        echo json_encode(array('status' => 400, 'error' => 'Key is missing'));
+
     }
 }
 

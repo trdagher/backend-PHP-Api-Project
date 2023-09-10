@@ -2,7 +2,7 @@
 require_once('db.php'); // Include the database connection file
 
 // Allow requests from any origin
-header("Access-Control-Allow-Origin: http://127.0.0.1:5500");
+header("Access-Control-Allow-Origin: *");
 
 // Allow specific HTTP methods (e.g., POST)
 header("Access-Control-Allow-Methods: POST");
@@ -71,21 +71,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($insertResult) {
                 // Include the API key in the response body
-                $response = array('success' => true, 'message' => 'Login successful', 'token' => $apiKey);
+                $response = array('success' => true, 'message' => 'Login successful', 'token' => $apiKey, 'status' => 200);
+
 
                 // Set a cookie with the API key (if needed)
                 setcookie('jwt_token', $apiKey, $timestamp, '/', '127.0.0.1', false, true);
             } else {
                 // Failed to store the API key in the database
-                $response = array('success' => false, 'message' => 'Failed to store API key');
+                $response = array('success' => false, 'message' => 'Failed to store API key', 'status' => 500);
+
             }
         } else {
             // User credentials are invalid
-            $response = array('success' => false, 'message' => 'Login failed');
+            $response = array('success' => false, 'message' => 'Login failed', 'status' => 401);
+
         }
     } else {
         // JSON data does not contain the expected keys
-        $response = array('success' => false, 'message' => 'Invalid JSON data');
+        $response = array('success' => false, 'message' => 'Invalid JSON data', 'status' => 400);
+
     }
 } else {
     // Invalid request method
