@@ -133,8 +133,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     echo json_encode(array('status' => '201', 'message' => 'No matching records found'));
                 } else {
                     // Return the data as a JSON response
-                    header('Content-Type: application/json');
-                    echo json_encode($data);
+                     // Calculate the number of pages based on the number of rows and rows per page (e.g., 10)
+        $totalRows = count($data);
+        $rowsPerPage = 10;
+        $totalPages = ceil($totalRows / $rowsPerPage);
+
+        // Prepare the response array
+        $response = array(
+            'status' => '200',
+            'message' => 'OK',
+            'data' => $data,
+            'pages' => $totalPages
+        );
+
+        // Return the data as a JSON response with status 200
+        header('HTTP/1.1 200 OK');
+        header('Content-Type: application/json');
+        echo json_encode($response);
                 }
             } else {
                 // Handle database query errors
@@ -181,8 +196,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     echo json_encode(array('status' => '201', 'message' => 'No matching records found'));
                 } else {
                     // Return the data as a JSON response
-                    header('Content-Type: application/json');
-                    echo json_encode($data);
+                    // Calculate the number of pages based on the number of rows and rows per page (e.g., 10)
+        $totalRows = count($data);
+        $rowsPerPage = 10;
+        $totalPages = ceil($totalRows / $rowsPerPage);
+
+        // Prepare the response array
+        $response = array(
+            'status' => '200',
+            'message' => 'OK',
+            'data' => $data,
+            'pages' => $totalPages
+        );
+
+        // Return the data as a JSON response with status 200
+        header('HTTP/1.1 200 OK');
+        header('Content-Type: application/json');
+        echo json_encode($response);
                 }
             } else {
                 // Handle database query errors
@@ -287,7 +317,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
                     'firstName', 'lastName', 'manufacturerTrader', 'credibility',
                     'jobTitle', 'email', 'webPage', 'category', 'subCategory',
                     'street', 'city', 'stateProvince', 'zipPostalCode', 'country',
-                    'buisnessPhone', 'homePhone', 'mobilePhone', 'faxNumber'
+                    'buisnessPhone', 'homePhone', 'mobilePhone', 'faxNumber','latitude','longitude','locationUrl'
                 );
 
                 // Check and add valid fields to updateFields
@@ -360,7 +390,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'firstName', 'lastName', 'manufacturerTrader', 'credibility',
                 'jobTitle', 'email', 'webPage', 'category', 'subCategory',
                 'street', 'city', 'stateProvince', 'zipPostalCode', 'country',
-                'buisnessPhone', 'homePhone', 'mobilePhone', 'faxNumber'
+                'buisnessPhone', 'homePhone', 'mobilePhone', 'faxNumber','latitude','longitude','locationUrl'
             );
 
             // Check if the required fields are present
