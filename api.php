@@ -115,7 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $offset = ($data - 1) * $rowsPerPage;
 
             // Your SQL query to fetch data with pagination using 'LIMIT' and 'OFFSET'
-            $query = "SELECT * FROM users LIMIT ?, ?";
+            $query = "SELECT * FROM users ORDER BY id DESC LIMIT ?, ?";
+
 
             // Prepare the query using the existing $conn
             $stmt = $conn->prepare($query);
@@ -133,23 +134,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     echo json_encode(array('status' => '201', 'message' => 'No matching records found'));
                 } else {
                     // Return the data as a JSON response
-                     // Calculate the number of pages based on the number of rows and rows per page (e.g., 10)
-        $totalRows = count($data);
-        $rowsPerPage = 10;
-        $totalPages = ceil($totalRows / $rowsPerPage);
+                    // Calculate the number of pages based on the number of rows and rows per page (e.g., 10)
+                    $totalRows = count($data);
+                    $rowsPerPage = 10;
+                    $totalPages = ceil($totalRows / $rowsPerPage);
 
-        // Prepare the response array
-        $response = array(
-            'status' => '200',
-            'message' => 'OK',
-            'data' => $data,
-            'pages' => $totalPages
-        );
+                    // Prepare the response array
+                    $response = array(
+                        'status' => '200',
+                        'message' => 'OK',
+                        'data' => $data,
+                        'pages' => $totalPages
+                    );
 
-        // Return the data as a JSON response with status 200
-        header('HTTP/1.1 200 OK');
-        header('Content-Type: application/json');
-        echo json_encode($response);
+                    // Return the data as a JSON response with status 200
+                    header('HTTP/1.1 200 OK');
+                    header('Content-Type: application/json');
+                    echo json_encode($response);
                 }
             } else {
                 // Handle database query errors
@@ -161,10 +162,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             header('HTTP/1.1 500 Internal Server Error');
             echo json_encode(array('status' => 500, 'error' => 'Database connection error'));
         }
-    } elseif (isset($_GET['key']) && isset($_GET['search']) && isset($_GET['limit'])) {
+    } elseif (isset($_GET['key']) && isset($_GET['search']) && isset($_GET['limit']) && isset($_GET['value'])) {
         $key = $_GET['key'];
-        $search = $_GET['search'];
+        $searchColumn = $_GET['search'];
         $limit = intval($_GET['limit']); // Convert 'limit' to an integer
+        $searchValue = $_GET['value'];
 
         validateKeyFromURL($conn);
 
@@ -173,51 +175,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $rowsPerPage = 10;
             $offset = ($limit - 1) * $rowsPerPage;
 
-            // Your SQL query to fetch data based on 'search' and 'limit'
-            $query = "SELECT * FROM users WHERE firstName LIKE ? LIMIT ?, ?";
+            // Define an array of searchable columns
+            $searchableColumns = array('firstName', 'lastName', 'email');
 
-            // Prepare the query using the existing $conn
-            $stmt = $conn->prepare($query);
+            // Check if the 'search' parameter is a valid column
+            if (in_array($searchColumn, $searchableColumns)) {
+                // Your SQL query to fetch data based on the selected column, 'value', and 'limit'
+                $query = "SELECT * FROM users WHERE $searchColumn LIKE ? ORDER BY id DESC LIMIT ?, ?";
 
-            // Add wildcard characters for searching
-            $searchParam = '%' . $search . '%';
+                // Prepare the query using the existing $conn
+                $stmt = $conn->prepare($query);
 
-            $stmt->bind_param("sii", $searchParam, $offset, $rowsPerPage);
-            $stmt->execute();
+                // Add wildcard characters for searching
+                $searchParam = '%' . $searchValue . '%';
 
-            $result = $stmt->get_result();
+                $stmt->bind_param("sii", $searchParam, $offset, $rowsPerPage);
+                $stmt->execute();
 
-            if ($result) {
-                $data = $result->fetch_all(MYSQLI_ASSOC);
+                $result = $stmt->get_result();
 
-                // Check if the result is empty
-                if (empty($data)) {
-                    header('HTTP/1.1 201 Created');
-                    echo json_encode(array('status' => '201', 'message' => 'No matching records found'));
+                if ($result) {
+                    $data = $result->fetch_all(MYSQLI_ASSOC);
+
+                    // Check if the result is empty
+                    if (empty($data)) {
+                        header('HTTP/1.1 201 Created');
+                        echo json_encode(array('status' => '201', 'message' => 'No matching records found'));
+                    } else {
+                        // Return the data as a JSON response
+                        // Calculate the number of pages based on the number of rows and rows per page (e.g., 10)
+                        $totalRows = count($data);
+                        $rowsPerPage = 10;
+                        $totalPages = ceil($totalRows / $rowsPerPage);
+
+                        // Prepare the response array
+                        $response = array(
+                            'status' => '200',
+                            'message' => 'OK',
+                            'data' => $data,
+                            'pages' => $totalPages
+                        );
+
+                        // Return the data as a JSON response with status 200
+                        header('HTTP/1.1 200 OK');
+                        header('Content-Type: application/json');
+                        echo json_encode($response);
+                    }
                 } else {
-                    // Return the data as a JSON response
-                    // Calculate the number of pages based on the number of rows and rows per page (e.g., 10)
-        $totalRows = count($data);
-        $rowsPerPage = 10;
-        $totalPages = ceil($totalRows / $rowsPerPage);
-
-        // Prepare the response array
-        $response = array(
-            'status' => '200',
-            'message' => 'OK',
-            'data' => $data,
-            'pages' => $totalPages
-        );
-
-        // Return the data as a JSON response with status 200
-        header('HTTP/1.1 200 OK');
-        header('Content-Type: application/json');
-        echo json_encode($response);
+                    // Handle database query errors
+                    header('HTTP/1.1 500 Internal Server Error');
+                    echo json_encode(array('status' => 500, 'error' => 'Database error'));
                 }
             } else {
-                // Handle database query errors
-                header('HTTP/1.1 500 Internal Server Error');
-                echo json_encode(array('status' => 500, 'error' => 'Database error'));
+                // Handle invalid 'search' parameter
+                header('HTTP/1.1 400 Bad Request');
+                echo json_encode(array('status' => 400, 'error' => 'Invalid search column'));
             }
         } catch (Exception $e) {
             // Handle database connection errors
@@ -228,7 +240,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         // Handle the case where the 'key', 'data', 'search', or 'limit' parameter is missing
         header('HTTP/1.1 400 Bad Request');
         echo json_encode(array('status' => 400, 'error' => 'Key, data, search, or limit is missing'));
-
     }
 }
 
@@ -263,7 +274,6 @@ else if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
                         // Return a success response
                         header('HTTP/1.1 200 OK');
                         echo json_encode(array('status' => 200, 'message' => 'Record deleted successfully'));
-
                     } else {
                         // Handle database query errors
                         header('HTTP/1.1 500 Internal Server Error');
@@ -273,25 +283,21 @@ else if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
                     // The record with the given ID does not exist
                     header('HTTP/1.1 404 Not Found');
                     echo json_encode(array('status' => 404, 'error' => 'Record not found'));
-
                 }
             } else {
                 // Handle missing 'id' field in JSON data
                 header('HTTP/1.1 400 Bad Request');
                 echo json_encode(array('status' => 400, 'error' => 'Invalid request data'));
-
             }
         } catch (Exception $e) {
             // Handle exceptions
             header('HTTP/1.1 500 Internal Server Error');
             echo json_encode(array('status' => 500, 'error' => 'Server error'));
-
         }
     } else {
         // Handle the case where the 'key' parameter is missing
         header('HTTP/1.1 400 Bad Request');
         echo json_encode(array('status' => 400, 'error' => 'Key is missing'));
-
     }
 }
 
@@ -317,7 +323,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
                     'firstName', 'lastName', 'manufacturerTrader', 'credibility',
                     'jobTitle', 'email', 'webPage', 'category', 'subCategory',
                     'street', 'city', 'stateProvince', 'zipPostalCode', 'country',
-                    'buisnessPhone', 'homePhone', 'mobilePhone', 'faxNumber','latitude','longitude','locationUrl'
+                    'buisnessPhone', 'homePhone', 'mobilePhone', 'faxNumber', 'latitude', 'longitude', 'locationUrl'
                 );
 
                 // Check and add valid fields to updateFields
@@ -342,36 +348,30 @@ else if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
                         // Return a success response
                         header('HTTP/1.1 200 OK');
                         echo json_encode(array('status' => 200, 'message' => 'Record updated successfully'));
-
                     } else {
                         // Handle database query errors
                         header('HTTP/1.1 500 Internal Server Error');
                         echo json_encode(array('status' => 500, 'error' => 'Database error: ' . $stmt->error));
-
                     }
                 } else {
                     // Handle missing or invalid fields in JSON data
                     header('HTTP/1.1 400 Bad Request');
                     echo json_encode(array('status' => 400, 'error' => 'No valid fields to update'));
-
                 }
             } else {
                 // Handle missing 'id' field in JSON data
                 header('HTTP/1.1 400 Bad Request');
                 echo json_encode(array('status' => 400, 'error' => 'Invalid request data: Missing "id" field'));
-
             }
         } catch (Exception $e) {
             // Handle exceptions
             header('HTTP/1.1 500 Internal Server Error');
             echo json_encode(array('status' => 500, 'error' => 'Server error: ' . $e->getMessage()));
-
         }
     } else {
         // Handle the case where the 'key' parameter is missing
         header('HTTP/1.1 400 Bad Request');
         echo json_encode(array('status' => 400, 'error' => 'Key is missing'));
-
     }
 }
 
@@ -390,7 +390,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'firstName', 'lastName', 'manufacturerTrader', 'credibility',
                 'jobTitle', 'email', 'webPage', 'category', 'subCategory',
                 'street', 'city', 'stateProvince', 'zipPostalCode', 'country',
-                'buisnessPhone', 'homePhone', 'mobilePhone', 'faxNumber','latitude','longitude','locationUrl'
+                'buisnessPhone', 'homePhone', 'mobilePhone', 'faxNumber', 'latitude', 'longitude', 'locationUrl'
             );
 
             // Check if the required fields are present
@@ -419,32 +419,17 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 exit();
             }
-
-            // Construct the SQL query dynamically
+            // Build the INSERT query
             $query = "INSERT INTO users (";
-
-            foreach ($insertFields as $field) {
-                if (isset($data[$field])) {
-                    $query .= "$field, ";
-                }
-            }
-
-            // Remove the trailing comma and space from the query
-            $query = rtrim($query, ', ');
-
-            // Add the VALUES clause to the query
+            $query .= implode(', ', $insertFields);
             $query .= ") VALUES (";
-
-            // Add placeholders for each value
-            for ($i = 0; $i < count($insertFields); $i++) {
-                $query .= '?, ';
-            }
-
-            // Remove the trailing comma and space from the query
-            $query = rtrim($query, ', ');
-
-            // Complete the query
+            $query .= rtrim(str_repeat(
+                '?, ',
+                count($insertFields)
+            ), ', ');
             $query .= ")";
+
+
 
             // Prepare and execute the query using the existing $conn
             $stmt = $conn->prepare($query);
@@ -469,26 +454,19 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Return a success response
                 header('HTTP/1.1 200 OK');
                 echo json_encode(array('status' => 200, 'message' => 'Record inserted successfully'));
-
             } else {
                 // Handle database query errors
                 header('HTTP/1.1 500 Internal Server Error');
                 echo json_encode(array('status' => 500, 'error' => 'Database error'));
-
             }
         } catch (Exception $e) {
             // Handle exceptions
             header('HTTP/1.1 500 Internal Server Error');
             echo json_encode(array('status' => 500, 'error' => 'Server error: ' . $e->getMessage()));
-
         }
     } else {
         // Handle the case where the 'key' parameter is missing
         header('HTTP/1.1 400 Bad Request');
         echo json_encode(array('status' => 400, 'error' => 'Key is missing'));
-
     }
 }
-
-
-
