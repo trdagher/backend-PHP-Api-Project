@@ -162,11 +162,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             header('HTTP/1.1 500 Internal Server Error');
             echo json_encode(array('status' => 500, 'error' => 'Database connection error'));
         }
-    } elseif (isset($_GET['key']) && isset($_GET['search']) && isset($_GET['limit']) && isset($_GET['value'])) {
+    } else if (isset($_GET['key']) && isset($_GET['search']) && isset($_GET['limit'])) {
         $key = $_GET['key'];
-        $searchColumn = $_GET['search'];
+        $searchValue = $_GET['search'];
         $limit = intval($_GET['limit']); // Convert 'limit' to an integer
-        $searchValue = $_GET['value'];
 
         validateKeyFromURL($conn);
 
@@ -175,61 +174,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $rowsPerPage = 10;
             $offset = ($limit - 1) * $rowsPerPage;
 
-            // Define an array of searchable columns
-            $searchableColumns = array('firstName', 'lastName', 'email');
+            // Use a prepared statement with parameter binding to prevent SQL injection
+            $query = "SELECT * FROM users 
+                  WHERE firstName LIKE ? OR lastName LIKE ? OR email LIKE ? 
+                  ORDER BY id DESC LIMIT ?, ?";
 
-            // Check if the 'search' parameter is a valid column
-            if (in_array($searchColumn, $searchableColumns)) {
-                // Your SQL query to fetch data based on the selected column, 'value', and 'limit'
-                $query = "SELECT * FROM users WHERE $searchColumn LIKE ? ORDER BY id DESC LIMIT ?, ?";
+            // Prepare the query using the existing $conn
+            $stmt = $conn->prepare($query);
 
-                // Prepare the query using the existing $conn
-                $stmt = $conn->prepare($query);
+            // Add wildcard characters for partial matching
+            $searchParam = '%' . $searchValue . '%';
 
-                // Add wildcard characters for searching
-                $searchParam = '%' . $searchValue . '%';
+            // Bind parameters
+            $stmt->bind_param("sssss", $searchParam, $searchParam, $searchParam, $offset, $rowsPerPage);
+            $stmt->execute();
 
-                $stmt->bind_param("sii", $searchParam, $offset, $rowsPerPage);
-                $stmt->execute();
+            $result = $stmt->get_result();
 
-                $result = $stmt->get_result();
+            if ($result) {
+                $data = $result->fetch_all(MYSQLI_ASSOC);
 
-                if ($result) {
-                    $data = $result->fetch_all(MYSQLI_ASSOC);
-
-                    // Check if the result is empty
-                    if (empty($data)) {
-                        header('HTTP/1.1 201 Created');
-                        echo json_encode(array('status' => '201', 'message' => 'No matching records found'));
-                    } else {
-                        // Return the data as a JSON response
-                        // Calculate the number of pages based on the number of rows and rows per page (e.g., 10)
-                        $totalRows = count($data);
-                        $rowsPerPage = 10;
-                        $totalPages = ceil($totalRows / $rowsPerPage);
-
-                        // Prepare the response array
-                        $response = array(
-                            'status' => '200',
-                            'message' => 'OK',
-                            'data' => $data,
-                            'pages' => $totalPages
-                        );
-
-                        // Return the data as a JSON response with status 200
-                        header('HTTP/1.1 200 OK');
-                        header('Content-Type: application/json');
-                        echo json_encode($response);
-                    }
+                // Check if the result is empty
+                if (empty($data)) {
+                    header('HTTP/1.1 201 Created');
+                    echo json_encode(array('status' => '201', 'message' => 'No matching records found'));
                 } else {
-                    // Handle database query errors
-                    header('HTTP/1.1 500 Internal Server Error');
-                    echo json_encode(array('status' => 500, 'error' => 'Database error'));
+                    // Return the data as a JSON response
+                    // Calculate the number of pages based on the number of rows and rows per page (e.g., 10)
+                    $totalRows = count($data);
+                    $rowsPerPage = 10;
+                    $totalPages = ceil($totalRows / $rowsPerPage);
+
+                    // Prepare the response array
+                    $response = array(
+                        'status' => '200',
+                        'message' => 'OK',
+                        'data' => $data,
+                        'pages' => $totalPages
+                    );
+
+                    // Return the data as a JSON response with status 200
+                    header('HTTP/1.1 200 OK');
+                    header('Content-Type: application/json');
+                    echo json_encode($response);
                 }
             } else {
-                // Handle invalid 'search' parameter
-                header('HTTP/1.1 400 Bad Request');
-                echo json_encode(array('status' => 400, 'error' => 'Invalid search column'));
+                // Handle database query errors
+                header('HTTP/1.1 500 Internal Server Error');
+                echo json_encode(array('status' => 500, 'error' => 'Database error'));
             }
         } catch (Exception $e) {
             // Handle database connection errors
