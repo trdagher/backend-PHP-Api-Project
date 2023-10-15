@@ -55,12 +55,47 @@ function validateKeyForAdmin($conn)
     }
 }
 
+function validateKeyFromURL($conn)
+{
+    // Check if the 'key' parameter is set in the URL
+    if (isset($_GET['key'])) {
+        $keyFromURL = $_GET['key'];
+
+        // Query the database to check if the key exists and is still valid
+        $query = "SELECT expiration_timestamp FROM login WHERE api_key = '$keyFromURL'";
+        $result = $conn->query($query);
+
+        if ($result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $expirationTimestamp = $row['expiration_timestamp'];
+
+            // Check if the key is still valid
+            if ($expirationTimestamp >= time()) {
+                // Key is valid, you can continue with the request
+            } else {
+                // Key has expired, return a 401 Unauthorized response
+                header('HTTP/1.1 401 Unauthorized');
+                exit();
+            }
+        } else {
+            // Key not found in the database, return a 401 Unauthorized response
+            header('HTTP/1.1 401 Unauthorized');
+            exit();
+        }
+    } else {
+        // 'key' parameter is missing in the URL, return a 401 Unauthorized response
+        header('HTTP/1.1 401 Unauthorized');
+        exit();
+    }
+}
+
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if (isset($_GET['key']) && isset($_GET['data'])) {
         $key = $_GET['key'];
         $data = $_GET['data']; // Keep 'data' as a string to specify the table name
 
-        validateKeyForAdmin($conn);
+       ValidateKeyFromURL($conn);
 
         try {
             // Check if the requested table exists
@@ -289,10 +324,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         echo json_encode(array('status' => 400, 'error' => 'Missing parameters'));
     }
 }
-
-
-
-
-
-
-?>
