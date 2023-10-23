@@ -315,7 +315,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
                     'firstName', 'lastName', 'manufacturerTrader', 'credibility',
                     'jobTitle', 'email', 'webPage', 'category', 'subCategory',
                     'street', 'city', 'stateProvince', 'zipPostalCode', 'country',
-                    'buisnessPhone', 'homePhone', 'mobilePhone', 'faxNumber', 'latitude', 'longitude', 'locationUrl'
+                    'businessPhone', 'homePhone', 'mobilePhone', 'faxNumber', 'latitude', 'longitude'
                 );
 
                 // Check and add valid fields to updateFields
@@ -382,7 +382,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'firstName', 'lastName', 'manufacturerTrader', 'credibility',
                 'jobTitle', 'email', 'webPage', 'category', 'subCategory',
                 'street', 'city', 'stateProvince', 'zipPostalCode', 'country',
-                'buisnessPhone', 'homePhone', 'mobilePhone', 'faxNumber', 'latitude', 'longitude', 'locationUrl'
+                'businessPhone', 'homePhone', 'mobilePhone', 'faxNumber', 'latitude', 'longitude'
             );
 
             // Check if the required fields are present
