@@ -125,25 +125,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
             $result = $stmt->get_result();
 
-
             if ($result) {
                 $data = $result->fetch_all(MYSQLI_ASSOC);
 
                 // Check if the result is empty
                 if (empty($data)) {
                     header('HTTP/1.1 201 Created');
-                    echo json_encode(array('status' => '201', 'message' => 'No matching records found'));
+                    echo json_encode(array(
+                        'status' => '201', 'message' => 'No matching records found'
+                    ));
                 } else {
-                    // Convert the "sub_category" field to an array
-                    foreach ($data as &$row) {
-                        if (!empty($row['sub_category'])) {
-                            $row['sub_category'] = explode(',', $row['sub_category']);
-                            $row['sub_category'] = array_map('trim', $row['sub_category']);
-                        } else {
-                            $row['sub_category'] = array(); // Set it as an empty array
-                        }
-                    }
-
+                    // Return the data as a JSON response
                     // Calculate the number of pages based on the number of rows and rows per page (e.g., 10)
                     $totalRows = count($data);
                     $rowsPerPage = 10;
@@ -172,7 +164,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             header('HTTP/1.1 500 Internal Server Error');
             echo json_encode(array('status' => 500, 'error' => 'Database connection error'));
         }
-    } else if (isset($_GET['key']) && isset($_GET['search']) && isset($_GET['limit'])) {
+    } else if (
+        isset($_GET['key']) && isset($_GET['search']) && isset($_GET['limit'])
+    ) {
         $key = $_GET['key'];
         $searchValue = $_GET['search'];
         $limit = intval($_GET['limit']); // Convert 'limit' to an integer
@@ -207,7 +201,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 // Check if the result is empty
                 if (empty($data)) {
                     header('HTTP/1.1 201 Created');
-                    echo json_encode(array('status' => '201', 'message' => 'No matching records found'));
+                    echo json_encode(array(
+                        'status' => '201', 'message' => 'No matching records found'
+                    ));
                 } else {
                     // Return the data as a JSON response
                     // Calculate the number of pages based on the number of rows and rows per page (e.g., 10)
@@ -325,7 +321,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
                     'firstName', 'lastName', 'manufacturerTrader', 'credibility',
                     'jobTitle', 'email', 'webPage', 'category', 'subCategory',
                     'street', 'city', 'stateProvince', 'zipPostalCode', 'country',
-                    'businessPhone', 'homePhone', 'mobilePhone', 'faxNumber', 'latitude', 'longitude', 'Product', 'location_url', 'qr_text', 'sub_category', 'DateTime'
+                    'businessPhone', 'homePhone', 'mobilePhone', 'faxNumber', 'latitude', 'longitude', 'product', 'location_url', 'qr_text', 'DateTime'
                 );
 
                 // Check and add valid fields to updateFields
@@ -392,7 +388,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'firstName', 'lastName', 'manufacturerTrader', 'credibility',
                 'jobTitle', 'email', 'webPage', 'category', 'subCategory',
                 'street', 'city', 'stateProvince', 'zipPostalCode', 'country',
-                'businessPhone', 'homePhone', 'mobilePhone', 'faxNumber', 'latitude', 'longitude', 'Product', 'location_url', 'qr_text', 'sub_category', "DateTime"
+                'businessPhone', 'homePhone', 'mobilePhone', 'faxNumber', 'latitude', 'longitude', 'product', 'location_url', 'qr_text', "DateTime"
             );
 
             // Check if the required fields are present
