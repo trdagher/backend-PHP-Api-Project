@@ -125,6 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
             $result = $stmt->get_result();
 
+
             if ($result) {
                 $data = $result->fetch_all(MYSQLI_ASSOC);
 
@@ -133,7 +134,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     header('HTTP/1.1 201 Created');
                     echo json_encode(array('status' => '201', 'message' => 'No matching records found'));
                 } else {
-                    // Return the data as a JSON response
+                    // Convert the "sub_category" field to an array
+                    foreach ($data as &$row) {
+                        if (!empty($row['sub_category'])) {
+                            $row['sub_category'] = explode(',', $row['sub_category']);
+                            $row['sub_category'] = array_map('trim', $row['sub_category']);
+                        } else {
+                            $row['sub_category'] = array(); // Set it as an empty array
+                        }
+                    }
+
                     // Calculate the number of pages based on the number of rows and rows per page (e.g., 10)
                     $totalRows = count($data);
                     $rowsPerPage = 10;
@@ -239,7 +249,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 // DELETE Request: Delete Data from the Database
 else if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     if (isset($_GET['key'])) {
-        validateKeyForAdmin($conn);
+        validateKeyFromURL($conn);
         try {
             // Parse the JSON data sent in the request body, if any
             $data = json_decode(file_get_contents("php://input"), true);
@@ -297,7 +307,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
 // PUT Request: Update Data in the Database
 else if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     if (isset($_GET['key'])) {
-        validateKeyForAdmin($conn);
+        validateKeyFromURL($conn);
         try {
             // Parse the JSON data sent in the request body, if any
             $data = json_decode(file_get_contents("php://input"), true);
@@ -315,7 +325,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
                     'firstName', 'lastName', 'manufacturerTrader', 'credibility',
                     'jobTitle', 'email', 'webPage', 'category', 'subCategory',
                     'street', 'city', 'stateProvince', 'zipPostalCode', 'country',
-                    'businessPhone', 'homePhone', 'mobilePhone', 'faxNumber', 'latitude', 'longitude', 'Product', 'location_url'
+                    'businessPhone', 'homePhone', 'mobilePhone', 'faxNumber', 'latitude', 'longitude', 'Product', 'location_url', 'qr_text', 'sub_category', 'DateTime'
                 );
 
                 // Check and add valid fields to updateFields
@@ -382,7 +392,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'firstName', 'lastName', 'manufacturerTrader', 'credibility',
                 'jobTitle', 'email', 'webPage', 'category', 'subCategory',
                 'street', 'city', 'stateProvince', 'zipPostalCode', 'country',
-                'businessPhone', 'homePhone', 'mobilePhone', 'faxNumber', 'latitude', 'longitude', 'Product', 'location_url'
+                'businessPhone', 'homePhone', 'mobilePhone', 'faxNumber', 'latitude', 'longitude', 'Product', 'location_url', 'qr_text', 'sub_category', "DateTime"
             );
 
             // Check if the required fields are present
