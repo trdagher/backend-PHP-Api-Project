@@ -91,7 +91,8 @@ function validateKeyFromURL($conn)
 
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    if (isset($_GET['key'])) {
+    if (isset($_GET['key']) && isset($_GET['data']) && $_GET['data'] === 'category') {
+        // Handle 'category' data retrieval
         validateKeyFromURL($conn);
 
         try {
@@ -166,12 +167,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             header('HTTP/1.1 500 Internal Server Error');
             echo json_encode(array('status' => 500, 'error' => 'Database connection error'));
         }
+    } else if (isset($_GET['key']) && isset($_GET['data'])) {
+        validateKeyFromURL($conn);
+
+        $data = $_GET['data'];
+
+        // Define an array of allowed table names
+        $allowedTables = array('company', 'credibility', 'jobTitle', 'manufacturer', 'sub_category');
+
+        if (in_array($data, $allowedTables)) {
+            // Handle data retrieval based on the 'data' parameter
+            try {
+                // Your SQL query to fetch data from the specified table
+                $query = "SELECT * FROM " . $data; // Adjust the query for each table
+
+                // Prepare the query using the existing $conn
+                $stmt = $conn->prepare($query);
+                $stmt->execute();
+
+                $result = $stmt->get_result();
+
+                if ($result) {
+                    $data = $result->fetch_all(MYSQLI_ASSOC);
+
+                    if (empty($data)) {
+                        header('HTTP/1.1 201 Created');
+                        echo json_encode(array(
+                            'status' => '201', 'message' => 'No matching records found'
+                        ));
+                    } else {
+                        // Prepare the response array
+                        $response = array(
+                            'status' => '200',
+                            'message' => 'OK',
+                            'data' => $data,
+                        );
+
+                        // Return the data as a JSON response with status 200
+                        header('HTTP/1.1 200 OK');
+                        header('Content-Type: application/json');
+                        echo json_encode($response);
+                    }
+                } else {
+                    // Handle database query errors
+                    header('HTTP/1.1 500 Internal Server Error');
+                    echo json_encode(array('status' => 500, 'error' => 'Database error'));
+                }
+            } catch (Exception $e) {
+                // Handle database connection errors
+                header('HTTP/1.1 500 Internal Server Error');
+                echo json_encode(array('status' => 500, 'error' => 'Database connection error'));
+            }
+        } else {
+            // Handle the case where 'data' is not in the list of allowed tables
+            header('HTTP/1.1 400 Bad Request');
+            echo json_encode(array('status' => 400, 'error' => 'Invalid data parameter'));
+        }
     } else {
-        // Handle the case where the 'key' parameter is missing
+        // Handle the case where the 'key' and 'data' parameters are missing or 'data' is invalid
         header('HTTP/1.1 400 Bad Request');
-        echo json_encode(array('status' => 400, 'error' => 'Key is missing'));
+        echo json_encode(array('status' => 400, 'error' => 'Invalid data or missing parameters'));
     }
 }
+
 
 
 
@@ -362,7 +420,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_GET['key'])) {
+    if (isset($_GET['key']) && ($_GET['data']) && $_GET['data'] === 'category') {
         validateKeyFromURL($conn); // Assuming validateKeyFromURL is defined
 
         try {
@@ -430,8 +488,90 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($stmt->execute()) {
                 // Return a success response
+                // Get the ID of the last inserted record
+                $insertedId = $stmt->insert_id;
+
+                // Return a success response with the ID
                 header('HTTP/1.1 200 OK');
-                echo json_encode(array('status' => 200, 'message' => 'Record inserted successfully'));
+                echo json_encode(array('status' => 200, 'message' => 'Record inserted successfully', 'id' => $insertedId));
+            } else {
+                // Handle database query errors
+                header('HTTP/1.1 500 Internal Server Error');
+                echo json_encode(array('status' => 500, 'error' => 'Database error'));
+            }
+        } catch (Exception $e) {
+            // Handle exceptions
+            header('HTTP/1.1 500 Internal Server Error');
+            echo json_encode(array('status' => 500, 'error' => 'Server error: ' . $e->getMessage()));
+        }
+    } else if (isset($_GET['key']) && isset($_GET['data']) && $_GET['data'] === 'manufacturer') {
+        validateKeyFromURL($conn); // Assuming validateKeyFromURL is defined
+
+        try {
+            // Parse the JSON data sent in the request body, if any
+            $data = json_decode(file_get_contents("php://input"), true);
+
+            // Define an array of the fields you want to insert
+            $insertFields = array('manufacturer_name');
+
+            // Check if the required fields are present
+            $requiredFields = array('manufacturer_name');
+            foreach ($requiredFields as $field) {
+                if (!isset($data[$field])) {
+                    header('HTTP/1.1 400 Bad Request');
+                    echo json_encode(array('status' => 400, 'error' => "$field is required"));
+                    exit();
+                }
+            }
+
+            // Check if a record with the same manufacturer_name already exists
+            $checkQuery = "SELECT COUNT(*) FROM manufacturer WHERE manufacturer_name = ?";
+            $checkStmt = $conn->prepare($checkQuery);
+            $checkStmt->bind_param('s', $data['manufacturer_name']);
+            $checkStmt->execute();
+            $checkStmt->bind_result($count);
+            $checkStmt->fetch();
+            $checkStmt->close();
+
+            if ($count > 0) {
+                header('HTTP/1.1 400 Bad Request');
+                echo json_encode(array('status' => 409, 'error' => 'Duplicate record found'));
+                exit();
+            }
+
+            // Build the INSERT query
+            $query = "INSERT INTO manufacturer (";
+            $query .= implode(', ', $insertFields);
+            $query .= ") VALUES (";
+            $query .= rtrim(str_repeat('?, ', count($insertFields)), ', ');
+            $query .= ")";
+
+            // Prepare and execute the query using the existing $conn
+            $stmt = $conn->prepare($query);
+
+            // Initialize an array to store the references to the bind_params arguments
+            $bindParams = array();
+
+            foreach ($insertFields as $field) {
+                if (isset($data[$field])) {
+                    $bindParams[] = &$data[$field];
+                }
+            }
+
+            // Construct the argument string for bind_param
+            $bindArgs = array(str_repeat('s', count($bindParams)));
+            $bindArgs = array_merge($bindArgs, $bindParams);
+
+            // Use call_user_func_array to bind the parameters dynamically
+            call_user_func_array(array($stmt, 'bind_param'), $bindArgs);
+
+            if ($stmt->execute()) {
+                // Get the ID of the last inserted record
+                $insertedId = $stmt->insert_id;
+
+                // Return a success response with the ID
+                header('HTTP/1.1 200 OK');
+                echo json_encode(array('status' => 200, 'message' => 'Record inserted successfully', 'id' => $insertedId));
             } else {
                 // Handle database query errors
                 header('HTTP/1.1 500 Internal Server Error');
