@@ -110,7 +110,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $offset = ($page - 1) * $rowsPerPage;
 
             // Your SQL query to fetch data with pagination using 'LIMIT' and 'OFFSET'
-            $query = "SELECT category_name, GROUP_CONCAT(sub_category) as sub_category FROM category GROUP BY category_name ORDER BY category_name ASC LIMIT ?, ?";
+            // Your SQL query to fetch data with pagination using 'LIMIT' and 'OFFSET' and including the 'id' column
+            // Your SQL query to fetch data with pagination using 'LIMIT' and 'OFFSET' and including the 'id' column
+            $query = "SELECT id, category_name, GROUP_CONCAT(sub_category) as sub_category 
+FROM category 
+GROUP BY id, category_name 
+ORDER BY category_name ASC  LIMIT ?, ?";
+
+
 
             // Prepare the query using the existing $conn
             $stmt = $conn->prepare($query);
@@ -284,7 +291,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
-    if (isset($_GET['key']) && isset($_GET['data']) && isset($_GET['id'])) {
+    if (isset($_GET['key']) && isset($_GET['data']) && isset($_GET['id']) && $_GET['data'] !== 'category') {
         $key = $_GET['key'];
         $data = $_GET['data']; // Keep 'data' as a string to specify the table name
         $id = $_GET['id'];     // Get the 'id' provided
@@ -364,7 +371,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
             header('HTTP/1.1 500 Internal Server Error');
             echo json_encode(array('status' => 500, 'error' => 'Database error'));
         }
-    } else  if (isset($_GET['key'])) {
+    } else if (isset($_GET['key']) && $_GET['data'] == 'category') {
         $key = $_GET['key'];
         ValidateKeyFromURL($conn);
 
@@ -541,6 +548,240 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Build the INSERT query
             $query = "INSERT INTO manufacturer (";
+            $query .= implode(', ', $insertFields);
+            $query .= ") VALUES (";
+            $query .= rtrim(str_repeat('?, ', count($insertFields)), ', ');
+            $query .= ")";
+
+            // Prepare and execute the query using the existing $conn
+            $stmt = $conn->prepare($query);
+
+            // Initialize an array to store the references to the bind_params arguments
+            $bindParams = array();
+
+            foreach ($insertFields as $field) {
+                if (isset($data[$field])) {
+                    $bindParams[] = &$data[$field];
+                }
+            }
+
+            // Construct the argument string for bind_param
+            $bindArgs = array(str_repeat('s', count($bindParams)));
+            $bindArgs = array_merge($bindArgs, $bindParams);
+
+            // Use call_user_func_array to bind the parameters dynamically
+            call_user_func_array(array($stmt, 'bind_param'), $bindArgs);
+
+            if ($stmt->execute()) {
+                // Get the ID of the last inserted record
+                $insertedId = $stmt->insert_id;
+
+                // Return a success response with the ID
+                header('HTTP/1.1 200 OK');
+                echo json_encode(array('status' => 200, 'message' => 'Record inserted successfully', 'id' => $insertedId));
+            } else {
+                // Handle database query errors
+                header('HTTP/1.1 500 Internal Server Error');
+                echo json_encode(array('status' => 500, 'error' => 'Database error'));
+            }
+        } catch (Exception $e) {
+            // Handle exceptions
+            header('HTTP/1.1 500 Internal Server Error');
+            echo json_encode(array('status' => 500, 'error' => 'Server error: ' . $e->getMessage()));
+        }
+    } else if (isset($_GET['key']) && isset($_GET['data']) && $_GET['data'] === 'company') {
+        validateKeyFromURL($conn); // Assuming validateKeyFromURL is defined
+
+        try {
+            // Parse the JSON data sent in the request body, if any
+            $data = json_decode(file_get_contents("php://input"), true);
+
+            // Define an array of the fields you want to insert
+            $insertFields = array('company_name');
+
+            // Check if the required fields are present
+            $requiredFields = array('company_name');
+            foreach ($requiredFields as $field) {
+                if (!isset($data[$field])) {
+                    header('HTTP/1.1 400 Bad Request');
+                    echo json_encode(array('status' => 400, 'error' => "$field is required"));
+                    exit();
+                }
+            }
+
+            // Check if a record with the same manufacturer_name already exists
+            $checkQuery = "SELECT COUNT(*) FROM company WHERE company_name = ?";
+            $checkStmt = $conn->prepare($checkQuery);
+            $checkStmt->bind_param('s', $data['company_name']);
+            $checkStmt->execute();
+            $checkStmt->bind_result($count);
+            $checkStmt->fetch();
+            $checkStmt->close();
+
+            if ($count > 0) {
+                header('HTTP/1.1 400 Bad Request');
+                echo json_encode(array('status' => 409, 'error' => 'Duplicate record found'));
+                exit();
+            }
+
+            // Build the INSERT query
+            $query = "INSERT INTO company (";
+            $query .= implode(', ', $insertFields);
+            $query .= ") VALUES (";
+            $query .= rtrim(str_repeat('?, ', count($insertFields)), ', ');
+            $query .= ")";
+
+            // Prepare and execute the query using the existing $conn
+            $stmt = $conn->prepare($query);
+
+            // Initialize an array to store the references to the bind_params arguments
+            $bindParams = array();
+
+            foreach ($insertFields as $field) {
+                if (isset($data[$field])) {
+                    $bindParams[] = &$data[$field];
+                }
+            }
+
+            // Construct the argument string for bind_param
+            $bindArgs = array(str_repeat('s', count($bindParams)));
+            $bindArgs = array_merge($bindArgs, $bindParams);
+
+            // Use call_user_func_array to bind the parameters dynamically
+            call_user_func_array(array($stmt, 'bind_param'), $bindArgs);
+
+            if ($stmt->execute()) {
+                // Get the ID of the last inserted record
+                $insertedId = $stmt->insert_id;
+
+                // Return a success response with the ID
+                header('HTTP/1.1 200 OK');
+                echo json_encode(array('status' => 200, 'message' => 'Record inserted successfully', 'id' => $insertedId));
+            } else {
+                // Handle database query errors
+                header('HTTP/1.1 500 Internal Server Error');
+                echo json_encode(array('status' => 500, 'error' => 'Database error'));
+            }
+        } catch (Exception $e) {
+            // Handle exceptions
+            header('HTTP/1.1 500 Internal Server Error');
+            echo json_encode(array('status' => 500, 'error' => 'Server error: ' . $e->getMessage()));
+        }
+    } else if (isset($_GET['key']) && isset($_GET['data']) && $_GET['data'] === 'credibility') {
+        validateKeyFromURL($conn); // Assuming validateKeyFromURL is defined
+
+        try {
+            // Parse the JSON data sent in the request body, if any
+            $data = json_decode(file_get_contents("php://input"), true);
+
+            // Define an array of the fields you want to insert
+            $insertFields = array('credibility_name');
+
+            // Check if the required fields are present
+            $requiredFields = array('credibility_name');
+            foreach ($requiredFields as $field) {
+                if (!isset($data[$field])) {
+                    header('HTTP/1.1 400 Bad Request');
+                    echo json_encode(array('status' => 400, 'error' => "$field is required"));
+                    exit();
+                }
+            }
+
+            // Check if a record with the same manufacturer_name already exists
+            $checkQuery = "SELECT COUNT(*) FROM credibility WHERE credibility_name = ?";
+            $checkStmt = $conn->prepare($checkQuery);
+            $checkStmt->bind_param('s', $data['credibility_name']);
+            $checkStmt->execute();
+            $checkStmt->bind_result($count);
+            $checkStmt->fetch();
+            $checkStmt->close();
+
+            if ($count > 0) {
+                header('HTTP/1.1 400 Bad Request');
+                echo json_encode(array('status' => 409, 'error' => 'Duplicate record found'));
+                exit();
+            }
+
+            // Build the INSERT query
+            $query = "INSERT INTO credibility (";
+            $query .= implode(', ', $insertFields);
+            $query .= ") VALUES (";
+            $query .= rtrim(str_repeat('?, ', count($insertFields)), ', ');
+            $query .= ")";
+
+            // Prepare and execute the query using the existing $conn
+            $stmt = $conn->prepare($query);
+
+            // Initialize an array to store the references to the bind_params arguments
+            $bindParams = array();
+
+            foreach ($insertFields as $field) {
+                if (isset($data[$field])) {
+                    $bindParams[] = &$data[$field];
+                }
+            }
+
+            // Construct the argument string for bind_param
+            $bindArgs = array(str_repeat('s', count($bindParams)));
+            $bindArgs = array_merge($bindArgs, $bindParams);
+
+            // Use call_user_func_array to bind the parameters dynamically
+            call_user_func_array(array($stmt, 'bind_param'), $bindArgs);
+
+            if ($stmt->execute()) {
+                // Get the ID of the last inserted record
+                $insertedId = $stmt->insert_id;
+
+                // Return a success response with the ID
+                header('HTTP/1.1 200 OK');
+                echo json_encode(array('status' => 200, 'message' => 'Record inserted successfully', 'id' => $insertedId));
+            } else {
+                // Handle database query errors
+                header('HTTP/1.1 500 Internal Server Error');
+                echo json_encode(array('status' => 500, 'error' => 'Database error'));
+            }
+        } catch (Exception $e) {
+            // Handle exceptions
+            header('HTTP/1.1 500 Internal Server Error');
+            echo json_encode(array('status' => 500, 'error' => 'Server error: ' . $e->getMessage()));
+        }
+    } else if (isset($_GET['key']) && isset($_GET['data']) && $_GET['data'] === 'jobTitle') {
+        validateKeyFromURL($conn); // Assuming validateKeyFromURL is defined
+
+        try {
+            // Parse the JSON data sent in the request body, if any
+            $data = json_decode(file_get_contents("php://input"), true);
+
+            // Define an array of the fields you want to insert
+            $insertFields = array('jobTitle_name');
+
+            // Check if the required fields are present
+            $requiredFields = array('jobTitle_name');
+            foreach ($requiredFields as $field) {
+                if (!isset($data[$field])) {
+                    header('HTTP/1.1 400 Bad Request');
+                    echo json_encode(array('status' => 400, 'error' => "$field is required"));
+                    exit();
+                }
+            }
+
+            // Check if a record with the same manufacturer_name already exists
+            $checkQuery = "SELECT COUNT(*) FROM jobTitle WHERE jobTitle_name = ?";
+            $checkStmt = $conn->prepare($checkQuery);
+            $checkStmt->bind_param('s', $data['jobTitle_name']);
+            $checkStmt->execute();
+            $checkStmt->bind_result($count);
+            $checkStmt->fetch();
+            $checkStmt->close();
+
+            if ($count > 0) {
+                header('HTTP/1.1 400 Bad Request');
+                echo json_encode(array('status' => 409, 'error' => 'Duplicate record found'));
+                exit();
+            }
+
+            // Build the INSERT query
+            $query = "INSERT INTO jobTitle (";
             $query .= implode(', ', $insertFields);
             $query .= ") VALUES (";
             $query .= rtrim(str_repeat('?, ', count($insertFields)), ', ');
